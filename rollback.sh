@@ -27,6 +27,7 @@ ORIG_DNS_HOST=null
 ORIG_A11Y_SERVICES=null
 ORIG_A11Y_ENABLED=0
 ORIG_SCREENSAVER=com.google.android.backdrop/.Backdrop   # the screensaver before Aerial Views
+ORIG_IDLE_MS=300000                                      # idle time before the screensaver, was 5 minutes
 AERIAL=com.neilturner.aerialviews                        # the screensaver app this project installs
 
 usage() { sed -n '2,14p' "$0" | sed 's/^# \{0,1\}//'; }
@@ -112,6 +113,7 @@ if [ -z "$ONLY" ]; then
 
   echo "== 5. Screensaver back to the original, Aerial Views removed"
   tv "settings put secure screensaver_components $ORIG_SCREENSAVER"
+  tv "settings put system screen_off_timeout $ORIG_IDLE_MS"
   if [ -n "$DRY" ] || ask 'pm list packages' | grep -qx "package:$AERIAL"; then
     tv "pm uninstall $AERIAL"
   else
@@ -138,6 +140,8 @@ verify() {
     if ask 'pm list packages' | grep -qx "package:$OURS"; then fail "$OURS is still installed"; else pass "$OURS removed"; fi
     SAVER=$(ask 'settings get secure screensaver_components' | tail -n 1)
     [ "$SAVER" = "$ORIG_SCREENSAVER" ] && pass "screensaver = $SAVER" || fail "screensaver = $SAVER (wanted $ORIG_SCREENSAVER)"
+    IDLE=$(ask 'settings get system screen_off_timeout' | tail -n 1)
+    [ "$IDLE" = "$ORIG_IDLE_MS" ] && pass "screensaver idle time = $IDLE ms" || fail "screensaver idle time = $IDLE ms (wanted $ORIG_IDLE_MS)"
     if ask 'pm list packages' | grep -qx "package:$AERIAL"; then fail "$AERIAL is still installed"; else pass "$AERIAL removed"; fi
     MODE=$(ask 'settings get global private_dns_mode' | tail -n 1)
     [ "$MODE" = "$ORIG_DNS_MODE" ] && pass "private_dns_mode = $MODE" || fail "private_dns_mode = $MODE (wanted $ORIG_DNS_MODE)"

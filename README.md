@@ -78,7 +78,7 @@ Aerial Views plays the Apple TV aerial videos (cities, landscapes, underwater, s
 
 - **It changes every time:** shuffle is on, and the three sources add up to 244 videos (139 Apple, 85 Amazon, 20 community), all streamed from the internet (Apple's at 1080p HEVC).
 - **New videos** arrive with new versions of the app. There is no "trending screensaver" feed to subscribe to; to refresh the catalogue, install the newer release the same way.
-- **Starts after** 5 minutes idle, the TV's existing setting.
+- **Starts after** 2 minutes without a button press (`screen_off_timeout`, 5 minutes originally).
 - **Change it** from the Aerial Views tile on Home: sources, quality, clock and location overlays, and the playlist options.
 
 ```bash
@@ -94,7 +94,7 @@ Aerial Views is a separate open-source project with its own licence; its APK is 
 - The launcher's dock, app grid and Inputs menu (HDMI 1 to 3, AV, Live TV) respond to the D-pad.
 - After a reboot: the launcher is Home, all 19 packages are still disabled, Private DNS is still on.
 - Trending shelf: titles and artwork load for Netflix, Prime Video and JioHotstar, rotate, and come back from the cache after the launcher is force-stopped and started again. The launcher's 316 unit tests pass.
-- Screensaver: Aerial Views starts by itself after 5 minutes without a button press, and the owner confirmed the video plays on the TV.
+- Screensaver: Aerial Views starts by itself once the idle time is up (timed at both 5 and 2 minutes), and the owner confirmed the video plays on the TV.
 
 Not tested: HDMI picture with a source connected, tuner reception, standby over several days, a firmware update, and a real run of `rollback.sh` (only its dry run). The aerial video cannot be screenshotted, because the TV's hardware video layer is not captured.
 
@@ -158,7 +158,7 @@ Everything, in one command (needs USB debugging on):
 TV_HOST=<tv ip> ./rollback.sh
 ```
 
-It re-enables every package from the batches, hands Home back to the stock launcher, removes the custom launcher only after that worked, restores Private DNS and the accessibility settings, puts Google Backdrop back as the screensaver and removes Aerial Views, reboots, and prints PASS or FAIL for each check. Packages that were already disabled before this project ([`original-disabled.txt`](original-disabled.txt)) stay disabled.
+It re-enables every package from the batches, hands Home back to the stock launcher, removes the custom launcher only after that worked, restores Private DNS and the accessibility settings, puts Google Backdrop and the 5-minute idle time back and removes Aerial Views, reboots, and prints PASS or FAIL for each check. Packages that were already disabled before this project ([`original-disabled.txt`](original-disabled.txt)) stay disabled.
 
 | Command | What it does |
 |---|---|
