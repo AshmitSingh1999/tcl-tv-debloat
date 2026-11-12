@@ -1,0 +1,17 @@
+# Dumps of the TV (serial, Android ID, Wi-Fi name, addresses) stay local.
+backup/
+# Raw session screenshots may show the account avatar or Wi-Fi name; only docs/*.jpg is published.
+shots/
+work/
+# ADB client key and Python environment
+tools/adbkey/
+tools/venv/
+__pycache__/
+# Build output
+launcher/.gradle/
+launcher/build/
+launcher/app/build/
+launcher/local.properties
+*.apk
+*.aab
+.DS_Store

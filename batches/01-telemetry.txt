@@ -1,0 +1,6 @@
+# Batch 1: telemetry and analytics. Nothing here has a screen of its own.
+com.tcl.bi                               # TCL BI analytics (also hosts TCL's TTVS push service)
+com.google.android.feedback              # "send feedback" uploader
+com.google.android.tv.bugreportsender    # bug report uploader
+com.google.android.partnersetup          # partner-app attribution
+com.google.android.onetimeinitializer    # first-setup leftovers

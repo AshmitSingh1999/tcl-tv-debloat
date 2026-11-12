@@ -1,0 +1,6 @@
+# Batch 3: preloads nobody asked for. Netflix, Prime Video, Hotstar, YouTube, ZEE5, Eros Now,
+# YouTube Music, Play Movies and Play Games are left alone.
+com.tcl.useragreement                    # end-user agreement screens
+com.tcl.android.webview                  # unused: Google WebView is the active provider
+au.com.stan.and                          # Stan (Australia only)
+tv.wuaki.apptv                           # Rakuten TV (not offered in India)

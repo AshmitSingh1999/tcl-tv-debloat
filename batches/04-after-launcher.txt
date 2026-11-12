@@ -1,0 +1,5 @@
+# Batch 4: ONLY after the new launcher is installed and confirmed as Home.
+# tvweishi and appmarket2 both carry an installer service, so they go after the APK is on the TV.
+com.google.android.tvlauncher            # stock Android TV home (ad rows at the top)
+com.tcl.tvweishi                         # TCL "TV Guard" cleaner
+com.tcl.appmarket2                       # TCL app store (Google Play Store stays)
