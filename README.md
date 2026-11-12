@@ -94,9 +94,9 @@ Aerial Views is a separate open-source project with its own licence; its APK is 
 - The launcher's dock, app grid and Inputs menu (HDMI 1 to 3, AV, Live TV) respond to the D-pad.
 - After a reboot: the launcher is Home, all 19 packages are still disabled, Private DNS is still on.
 - Trending shelf: titles and artwork load for Netflix, Prime Video and JioHotstar, rotate, and come back from the cache after the launcher is force-stopped and started again. The launcher's 316 unit tests pass.
-- Screensaver: Aerial Views starts as the system screensaver and the TV's hardware decoder starts playing.
+- Screensaver: Aerial Views starts by itself after 5 minutes without a button press, and the owner confirmed the video plays on the TV.
 
-Not tested: HDMI picture with a source connected, tuner reception, standby over several days, a firmware update, and a real run of `rollback.sh` (only its dry run). The aerial video itself could not be screenshotted, because the TV's hardware video layer is not captured, so the picture was not checked by eye from here.
+Not tested: HDMI picture with a source connected, tuner reception, standby over several days, a firmware update, and a real run of `rollback.sh` (only its dry run). The aerial video cannot be screenshotted, because the TV's hardware video layer is not captured.
 
 ## Do it on the same TV model
 
