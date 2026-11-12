@@ -8,8 +8,6 @@ A TCL / iFFALCON Android TV cleaned up over Wi-Fi: ad rows, telemetry and preloa
 | ![Prime Video highlighted with its own trending title](docs/after-prime.jpg) | ![JioHotstar highlighted with its own trending title](docs/after-hotstar.jpg) |
 | ![App grid below the dock](docs/after-grid.jpg) | ![Inputs menu listing HDMI ports, AV and Live TV](docs/after-inputs.jpg) |
 
-Built on [Gathin23/cleanyourtv](https://github.com/Gathin23/cleanyourtv): the launcher in `launcher/` and the scripts in `tools/` are theirs (MIT). This project configures them for one TV and adds the trending shelf, the batch lists, `rollback.sh` and this write-up.
-
 ## The TV
 
 | | |
@@ -32,7 +30,7 @@ Other firmware needs its own list. Check `getprop ro.build.version.incremental` 
 | [`03-preloads`](batches/03-preloads.txt) | 4 | Agreement screens, TCL's unused WebView, Stan and Rakuten TV (neither offered in India) |
 | [`04-after-launcher`](batches/04-after-launcher.txt) | 3 | Stock home, TCL cleaner, TCL app store. Applied only once the new launcher was Home |
 
-**Launcher:** the cleanyourtv reference launcher (`com.gathin.tvhome`) with a four-app dock (Netflix, Prime Video, YouTube, JioHotstar), `com.tcl.tv` as the Live TV entry in the Inputs menu, the cinematic top shelf switched on, and the trending shelf described below.
+**Launcher:** a lightweight open-source launcher (`com.gathin.tvhome`) with a four-app dock (Netflix, Prime Video, YouTube, JioHotstar), `com.tcl.tv` as the Live TV entry in the Inputs menu, the cinematic top shelf switched on, and the trending shelf described below.
 
 **Screensaver:** [Aerial Views](https://github.com/theothernt/AerialViews) 1.8.5 replaces Google Backdrop.
 
@@ -50,7 +48,7 @@ How it works ([`Trending.java`](launcher/app/src/main/java/com/gathin/tvhome/Tre
 - **What "trending" means here:** TMDB's own measure of current interest among recent titles the service carries in that country. It is not Netflix's, Amazon's or JioHotstar's own chart.
 - **Network use:** the lists and backdrops (1280 px wide) are fetched at most twice a day and cached in the app's private storage, so Home shows them at once after a restart. Failed requests are retried, because the network here reset some connections to TMDB.
 - **Display only:** pressing OK still opens the app, not the title.
-- **Permission:** this is the one change that gives the launcher the `INTERNET` permission, which the upstream launcher deliberately does not have. With `trending_shelf` set to `false`, or built without a key, it never opens a connection.
+- **Permission:** this is the one change that gives the launcher the `INTERNET` permission, which it does not have otherwise. With `trending_shelf` set to `false`, or built without a key, it never opens a connection.
 
 Settings in [`config.xml`](launcher/app/src/main/res/values/config.xml):
 
@@ -188,4 +186,4 @@ Edit `dock_apps` (order and apps) and `columns` (4 to 7) in [`config.xml`](launc
 
 ## Licence
 
-MIT. The launcher and `tools/` are © Gathin and the cleanyourtv contributors; see [LICENSE](LICENSE). The launcher's font and icons carry their own licences in [`launcher/`](launcher/).
+MIT; see [LICENSE](LICENSE) for the copyright notice. The launcher's font and icons carry their own licences in [`launcher/`](launcher/).
