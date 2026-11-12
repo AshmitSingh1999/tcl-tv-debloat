@@ -499,7 +499,24 @@
          colour; the shelf gets a larger name, a "Last opened" line (from the apps Home opened) and dock position
          dots, the focus glow takes the app's colour and the dock band turns translucent. false keeps the plain
          shelf. Can also be set with "cinematic_home": true in a theme's config.json. -->
-    <bool name="cinematic_home">false</bool>
+    <bool name="cinematic_home">true</bool>
+
+    <!-- Trending shelf (needs cinematic_home and a TMDB key in launcher/tmdb.properties): while a dock app listed in
+         trending_providers is focused, the top shelf shows the backdrop and name of a recent title that is popular
+         on that service in trending_region, and moves to the next one every trending_rotate_seconds. The lists are
+         fetched from TMDB at most twice a day and cached. false, or no key, keeps the launcher off the network. -->
+    <bool name="trending_shelf">true</bool>
+    <!-- ISO 3166-1 country whose catalogues are used. -->
+    <string name="trending_region" translatable="false">IN</string>
+    <!-- package=TMDB watch provider id. Ids for a region: /3/watch/providers/tv?watch_region=IN -->
+    <string-array name="trending_providers" translatable="false">
+        <item>com.netflix.ninja=8</item>
+        <item>com.amazon.amazonvideo.livingroom=119</item>
+        <item>in.startv.hotstar=2336</item>
+    </string-array>
+    <integer name="trending_rotate_seconds">12</integer>
+    <!-- Opacity of a trending backdrop behind the shelf, 0 to 100 (an app's own softened artwork uses cinematic_art). -->
+    <integer name="trending_art">90</integer>
     <!-- With cinematic_home, false leaves out the dock position dots under the app's name, for a quieter shelf. Can
          also be set with "cinematic_dots": false in a theme's config.json. -->
     <bool name="cinematic_dots">true</bool>

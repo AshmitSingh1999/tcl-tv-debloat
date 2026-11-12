@@ -15,3 +15,6 @@ launcher/local.properties
 *.apk
 *.aab
 .DS_Store
+
+# TMDB API key for the trending shelf: never committed
+launcher/tmdb.properties

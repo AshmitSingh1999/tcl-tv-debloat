@@ -170,8 +170,16 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
     private float heroArtAlpha = 0.5f;
     /** Softened artwork per app (HeroArt, about 5 KB each), made the first time its dock tile is focused. */
     private final Map<String, Bitmap> heroArtCache = new HashMap<>();
-    /** The app whose artwork heroArt shows, so focusing it again only fades it back in. */
+    /** The app (or "trending:" + a title's id) whose artwork heroArt shows, so focusing it again only fades it back in. */
     private String heroArtKey;
+    /** Trending shelf (Trending.java): null when it is off or no TMDB key was built in. */
+    private Trending trending;
+    /** Opacity of a trending backdrop behind the shelf (config.xml trending_art). */
+    private float trendingArtAlpha = 0.9f;
+    /** What the artwork on the shelf fades to: heroArtAlpha for an app's own, trendingArtAlpha for a title's. */
+    private float heroArtTargetAlpha = 0.5f;
+    private int trendingRotateMs = 12_000;
+    private final Runnable trendingTick = this::rotateTrending;
     /** The focus glow's colour while the cinematic shelf tints it, 0 for plain white glass. */
     private int glassAccent;
     private int ambientColor = -1;
@@ -540,6 +548,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         cinematicWhiteFocus = cfg.cinematicWhiteFocus;
         heroArtAlpha = cfg.cinematicArt / 100f;
         if (cinematic) setUpCinematicShelf(cfg.cinematicScrim);
+        if (cinematic && heroArtAlpha > 0f) setUpTrending();
         // dock_title false: the name above the dock (and the cinematic lines under it) never shows; the glow
         // still follows the dock.
         if (!cfg.dockTitle) hero.setVisibility(View.GONE);
@@ -1124,6 +1133,10 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         // Back from an app opened from its tile, focus is still on that tile, so the cinematic "Last opened" line kept
         // the time from before this launch ("2 days ago" right after opening it). Refresh it.
         if (cinematic && heroMeta != null && lastFocused >= 0 && lastFocused < adapter.appCount()) updateHeroMeta(lastFocused);
+        if (trending != null) {
+            trending.refreshIfStale();
+            scheduleTrendingTick();
+        }
         // The network and Inputs pills keep their state while Home is in the background, and callbacks update them
         // when the network or the inputs change, so this refresh only catches anything missed. Its binder calls
         // (about 7 ms on a TCL C755, most of it WifiManager.getConnectionInfo) would hold up the first frame back
@@ -1318,6 +1331,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         ambient.animate().cancel();
         heroArt.animate().cancel();
         handler.removeCallbacks(minuteTick);
+        handler.removeCallbacks(trendingTick);
         handler.removeCallbacks(openWhenOnline);
         startPending = null;   // leaving Home before the network came back: the boot's app stays closed
         stopStats();
@@ -1361,6 +1375,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         heroArtCache.clear();
         heroArtKey = null;
         wallpaperPlayer.releaseForMemoryPressure();
+        if (trending != null) trending.trimMemory();
         tileRefresh.invalidate();
     }
 
@@ -1382,6 +1397,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         RemoteKeys.release(this);
         cancelHoldOk();
         if (gameDay != null) gameDay.shutdown();
+        if (trending != null) trending.shutdown();
         unregisterReceiver(packageReceiver);
         if (openOnStartOnWake) unregisterReceiver(wakeReceiver);
         wallpaperPlayer.close();
@@ -1918,6 +1934,9 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
     private void showHero(int position, float dockTopInRoot) {
         String label = adapter.labelAt(position);
         int color = adapter.ambientColorAt(position);
+        // A trending backdrop fills the shelf by itself: the app-coloured glow would only tint it.
+        final float glowAlpha = trendingAt(position) != null ? 0f : 1f;
+        scheduleTrendingTick();
         float y = dockTopInRoot - 14 * density - 26 * density - hero.getHeight();
         boolean changed = !label.contentEquals(heroName.getText());
         if (cinematic && heroArtAlpha > 0f) showHeroArt(position);
@@ -1933,7 +1952,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
             hero.setAlpha(1f);
             if (ambientGlow) {
                 setAmbient(color);
-                ambient.setAlpha(1f);
+                ambient.setAlpha(glowAlpha);
             }
             heroShown = true;
             return;
@@ -1949,7 +1968,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
             hero.animate().alpha(1f).setDuration(260).start();
             if (ambientGlow) {
                 setAmbient(color);
-                ambient.animate().alpha(1f).setDuration(600).start();
+                ambient.animate().alpha(glowAlpha).setDuration(600).start();
             }
             heroShown = true;
         } else if (changed) {
@@ -1965,20 +1984,23 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
             } else if (ambientGlow && color != ambientColor && glowSnap) {
                 ambient.animate().cancel();
                 setAmbient(color);
-                ambient.setAlpha(1f);
+                ambient.setAlpha(glowAlpha);
             } else if (ambientGlow && color != ambientColor) {
-                ambient.animate().alpha(0.35f).setDuration(200).withEndAction(() -> {
+                ambient.animate().alpha(Math.min(0.35f, ambient.getAlpha())).setDuration(200).withEndAction(() -> {
                     setAmbient(color);
-                    ambient.animate().alpha(1f).setDuration(500).start();
+                    ambient.animate().alpha(glowAlpha).setDuration(500).start();
                 }).start();
+            } else if (ambientGlow && ambient.getAlpha() != glowAlpha) {
+                // Same colour, but one of the two apps has a trending backdrop and the other has not.
+                ambient.animate().alpha(glowAlpha).setDuration(400).start();
             }
         } else {
             hero.setY(y);
             // onPause cancels the fade-ins, and a second Home during one lands on the same tile, which starts none:
             // finish them, or the shelf and the glow stay dim until focus moves to another app.
             if (hero.getAlpha() < 1f) hero.animate().alpha(1f).setDuration(260).start();
-            if (ambientGlow && color == ambientColor && ambient.getAlpha() < 1f) {
-                ambient.animate().alpha(1f).setDuration(600).start();
+            if (ambientGlow && color == ambientColor && ambient.getAlpha() != glowAlpha) {
+                ambient.animate().alpha(glowAlpha).setDuration(600).start();
             }
         }
     }
@@ -2040,7 +2062,13 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
     private void showHeroArt(int position) {
         String key = adapter.keyAt(position);
         if (key == null) return;
+        Trending.Item title = trendingAt(position);
+        if (title != null) {
+            showTrendingArt(title);
+            return;
+        }
         heroArt.animate().cancel();
+        heroArtTargetAlpha = heroArtAlpha;
         if (key.equals(heroArtKey)) {
             fadeHeroArt(420);
             return;
@@ -2051,25 +2079,121 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
             if (art != null) heroArtCache.put(key, art);
         }
         heroArtKey = key;
-        final Bitmap next = art;
+        swapHeroArt(art);
+    }
+
+    private void swapHeroArt(Bitmap next) {
         if (!animations || reducedMotion || heroArt.getAlpha() == 0f) {
             heroArt.setImageBitmap(next);
             fadeHeroArt(600);
             return;
         }
+        final float to = heroArtTargetAlpha;
         heroArt.animate().alpha(0f).setDuration(140).withEndAction(() -> {
             heroArt.setImageBitmap(next);
-            heroArt.animate().alpha(heroArtAlpha).setDuration(420).start();
+            heroArt.animate().alpha(to).setDuration(420).start();
         }).start();
     }
 
     private void fadeHeroArt(int ms) {
-        if (!animations) heroArt.setAlpha(heroArtAlpha);
-        else heroArt.animate().alpha(heroArtAlpha).setDuration(reducedMotion ? Math.min(ms, Motion.REDUCED_MS) : ms).start();
+        if (!animations) heroArt.setAlpha(heroArtTargetAlpha);
+        else heroArt.animate().alpha(heroArtTargetAlpha).setDuration(reducedMotion ? Math.min(ms, Motion.REDUCED_MS) : ms).start();
+    }
+
+    // ---- trending shelf --------------------------------------------------------------------------
+
+    /** config.xml trending_shelf, with a TMDB key built in: the shelf of a listed dock app shows a trending title. */
+    private void setUpTrending() {
+        trending = Trending.create(this);
+        if (trending == null) return;
+        trendingArtAlpha = Math.max(0, Math.min(100, getResources().getInteger(R.integer.trending_art))) / 100f;
+        trendingRotateMs = Math.max(5, getResources().getInteger(R.integer.trending_rotate_seconds)) * 1000;
+        // One size for every app's line, so the shelf does not change height between apps with and without a title.
+        heroMeta.setTextSize(TypedValue.COMPLEX_UNIT_SP, 18f);
+        heroMeta.setMaxWidth((int) (getResources().getDisplayMetrics().widthPixels * 0.6f));
+        heroMeta.setEllipsize(android.text.TextUtils.TruncateAt.END);
+        trending.setListener(this::onTrendingChanged);
+        trending.start();
+    }
+
+    /** The trending title this dock app's shelf shows now, or null. */
+    private Trending.Item trendingAt(int position) {
+        return trending == null ? null : trending.current(adapter.packageAt(position));
+    }
+
+    /** The title's backdrop as the shelf's artwork, unsoftened; decoded off the main thread the first time. */
+    private void showTrendingArt(Trending.Item title) {
+        final String key = "trending:" + title.id;
+        heroArt.animate().cancel();
+        heroArtTargetAlpha = trendingArtAlpha;
+        if (key.equals(heroArtKey)) {
+            fadeHeroArt(420);
+            return;
+        }
+        heroArtKey = key;
+        Bitmap ready = trending.cached(title);
+        if (ready != null) {
+            swapHeroArt(ready);
+            return;
+        }
+        // Not decoded yet: let the old artwork go while the file is read.
+        if (animations && !reducedMotion) heroArt.animate().alpha(0f).setDuration(140).start();
+        else heroArt.setAlpha(0f);
+        trending.load(title, bmp -> {
+            if (!key.equals(heroArtKey)) return;   // focus has moved on to another app or title
+            if (bmp == null || !heroShown) {
+                heroArtKey = null;                 // nothing was shown, so the next focus starts over
+                return;
+            }
+            heroArt.animate().cancel();
+            heroArt.setAlpha(0f);
+            heroArt.setImageBitmap(bmp);
+            fadeHeroArt(420);
+        });
+    }
+
+    private void scheduleTrendingTick() {
+        if (trending == null) return;
+        handler.removeCallbacks(trendingTick);
+        if (resumed) handler.postDelayed(trendingTick, trendingRotateMs);
+    }
+
+    /** Every trending_rotate_seconds: the focused dock app's shelf moves to its next title. */
+    private void rotateTrending() {
+        if (trending == null || !resumed) return;
+        handler.postDelayed(trendingTick, trendingRotateMs);
+        int pos = lastFocused;
+        if (!heroShown || pos < 0 || pos >= adapter.appCount()) return;
+        if (trending.advance(adapter.packageAt(pos))) {
+            showHeroArt(pos);
+            updateHeroMeta(pos);
+        }
+    }
+
+    /** New lists arrived (from the cache at start, or from the network): show them on the shelf that is up. */
+    private void onTrendingChanged() {
+        heroArtKey = null;
+        int pos = lastFocused;
+        if (!resumed || !heroShown || pos < 0 || pos >= adapter.appCount()) return;
+        showHeroArt(pos);
+        updateHeroMeta(pos);
+        if (ambientGlow) ambient.animate().alpha(trendingAt(pos) != null ? 0f : 1f).setDuration(500).start();
+        scheduleTrendingTick();
     }
 
     /** "Last opened yesterday, 9:40 PM", the time in white; nothing (but the same height) when it was never seen. */
     private void updateHeroMeta(int position) {
+        Trending.Item title = trendingAt(position);
+        if (title != null) {
+            // "Trending on Netflix  ·  <title>", the title in white.
+            String text = getString(R.string.trending_on, adapter.labelAt(position), title.title);
+            SpannableString line = new SpannableString(text);
+            int at = text.lastIndexOf(title.title);
+            if (at >= 0) line.setSpan(new ForegroundColorSpan(0xFFFFFFFF), at, at + title.title.length(), Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
+            heroMeta.setText(line);
+            heroMeta.setVisibility(View.VISIBLE);
+            return;
+        }
         long when = LastOpened.get(this, adapter.packageAt(position));
         if (when <= 0) {
             heroMeta.setVisibility(View.INVISIBLE);

@@ -2,6 +2,12 @@ plugins {
     id 'com.android.application'
 }
 
+// The TMDB key for the trending shelf, from launcher/tmdb.properties (tmdb.key=...). That file is not in git.
+// Without it the key is empty and the launcher never opens a connection.
+def tmdbProps = new Properties()
+def tmdbFile = rootProject.file('tmdb.properties')
+if (tmdbFile.exists()) tmdbFile.withInputStream { tmdbProps.load(it) }
+
 android {
     namespace 'com.gathin.tvhome'
     compileSdk 34
@@ -15,6 +21,11 @@ android {
         targetSdk 34
         versionCode 13
         versionName '3.4'
+        buildConfigField 'String', 'TMDB_KEY', "\"${tmdbProps.getProperty('tmdb.key', '').trim()}\""
+    }
+
+    buildFeatures {
+        buildConfig true
     }
 
     buildTypes {

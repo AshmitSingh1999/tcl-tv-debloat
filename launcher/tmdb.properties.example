@@ -1,0 +1,3 @@
+# Copy to tmdb.properties (same folder) and put your TMDB API key (the short v3 key) after the equals sign.
+# tmdb.properties is in .gitignore: never commit a real key.
+tmdb.key=

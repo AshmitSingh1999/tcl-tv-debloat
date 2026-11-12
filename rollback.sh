@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Undo everything this project changed on the TV: re-enable every package the batches disabled,
 # give Home back to the stock launcher, remove the custom launcher, and put Private DNS and the
-# accessibility (remote-key helper) settings back to what they were.
+# accessibility (remote-key helper) settings and the screensaver back to what they were.
 #
 # Usage:
 #   TV_HOST=<tv ip> ./rollback.sh               full rollback, then reboot and verify
@@ -26,6 +26,8 @@ ORIG_DNS_MODE=null
 ORIG_DNS_HOST=null
 ORIG_A11Y_SERVICES=null
 ORIG_A11Y_ENABLED=0
+ORIG_SCREENSAVER=com.google.android.backdrop/.Backdrop   # the screensaver before Aerial Views
+AERIAL=com.neilturner.aerialviews                        # the screensaver app this project installs
 
 usage() { sed -n '2,14p' "$0" | sed 's/^# \{0,1\}//'; }
 DRY=""; ONLY=""; REBOOT=1
@@ -107,6 +109,14 @@ if [ -z "$ONLY" ]; then
   echo "== 4. Private DNS back to its original value"
   put_or_delete global private_dns_mode "$ORIG_DNS_MODE"
   put_or_delete global private_dns_specifier "$ORIG_DNS_HOST"
+
+  echo "== 5. Screensaver back to the original, Aerial Views removed"
+  tv "settings put secure screensaver_components $ORIG_SCREENSAVER"
+  if [ -n "$DRY" ] || ask 'pm list packages' | grep -qx "package:$AERIAL"; then
+    tv "pm uninstall $AERIAL"
+  else
+    echo "  $AERIAL is not installed, nothing to remove"
+  fi
 fi
 
 if [ -n "$DRY" ]; then
@@ -126,13 +136,16 @@ verify() {
     NOW=$(ask 'cmd package resolve-activity --brief -a android.intent.action.MAIN -c android.intent.category.HOME' | tail -n 1)
     case "$NOW" in "$STOCK"/*) pass "Home is $NOW" ;; *) fail "Home is '${NOW:-unknown}'" ;; esac
     if ask 'pm list packages' | grep -qx "package:$OURS"; then fail "$OURS is still installed"; else pass "$OURS removed"; fi
+    SAVER=$(ask 'settings get secure screensaver_components' | tail -n 1)
+    [ "$SAVER" = "$ORIG_SCREENSAVER" ] && pass "screensaver = $SAVER" || fail "screensaver = $SAVER (wanted $ORIG_SCREENSAVER)"
+    if ask 'pm list packages' | grep -qx "package:$AERIAL"; then fail "$AERIAL is still installed"; else pass "$AERIAL removed"; fi
     MODE=$(ask 'settings get global private_dns_mode' | tail -n 1)
     [ "$MODE" = "$ORIG_DNS_MODE" ] && pass "private_dns_mode = $MODE" || fail "private_dns_mode = $MODE (wanted $ORIG_DNS_MODE)"
   fi
 }
 
 if [ -z "$ONLY" ] && [ -n "$REBOOT" ]; then
-  echo "== 5. Reboot (Android writes package state ~10 s after a change, so wait first)"
+  echo "== 6. Reboot (Android writes package state ~10 s after a change, so wait first)"
   tv "sync"
   sleep 15
   "$PY" -I tools/tv.py --reboot || true
